@@ -1,0 +1,10 @@
+services:
+  
+  sql_server_db:
+    image: "mcr.microsoft.com/mssql/server:2022-latest"
+    container_name: "tasks_management_db"
+    ports:
+      - "8002:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=MyTestPassword1234!
