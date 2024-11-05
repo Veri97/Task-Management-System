@@ -45,10 +45,8 @@ namespace TasksManagement.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("NotStarted");
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 

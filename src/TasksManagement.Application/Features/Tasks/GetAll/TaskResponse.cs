@@ -1,8 +1,8 @@
 ﻿using TasksManagement.Core.Enums;
 
-namespace TasksManagement.Core.Entities;
+namespace TasksManagement.Application.Features.Tasks.GetAll;
 
-public class TaskEntity
+public class TaskResponse
 {
     public int Id { get; set; }
     public string Name { get; set; } = null!;

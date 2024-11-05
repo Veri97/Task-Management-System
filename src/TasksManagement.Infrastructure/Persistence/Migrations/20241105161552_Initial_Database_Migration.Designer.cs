@@ -11,7 +11,7 @@ using TasksManagement.Infrastructure.Persistence;
 namespace TasksManagement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TasksDbContext))]
-    [Migration("20241104220636_Initial_Database_Migration")]
+    [Migration("20241105161552_Initial_Database_Migration")]
     partial class Initial_Database_Migration
     {
         /// <inheritdoc />
@@ -48,10 +48,8 @@ namespace TasksManagement.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("NotStarted");
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 

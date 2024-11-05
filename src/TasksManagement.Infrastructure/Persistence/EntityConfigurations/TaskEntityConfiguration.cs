@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
 using TasksManagement.Core.Entities;
-using TaskStatus = TasksManagement.Core.Enums.TaskStatus;
 
 namespace TasksManagement.Infrastructure.Persistence.EntityConfigurations;
 
@@ -23,8 +22,7 @@ internal sealed class TaskEntityConfiguration : IEntityTypeConfiguration<TaskEnt
         builder.Property(t => t.Status)
                .HasConversion<string>()
                .HasMaxLength(20)
-               .IsRequired()
-               .HasDefaultValue(TaskStatus.NotStarted);
+               .IsRequired();
 
         builder.Property(t => t.AssignedTo)
                .HasMaxLength(500);
