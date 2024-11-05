@@ -19,7 +19,7 @@ public class GetTasksQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldListOfTasks_WhenTasksExist()
+    public async Task Handle_ShouldReturnListOfTasks_WhenTasksExist()
     {
         // Arrange
         var query = new GetTasksQuery();
