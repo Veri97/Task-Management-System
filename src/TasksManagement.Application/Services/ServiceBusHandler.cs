@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
-using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
@@ -30,24 +29,48 @@ public class ServiceBusHandler : IServiceBusHandler
         _rabbitMQSettings = rabbitMQSettings.Value;
     }
 
+    public Task SendMessage<T>(string queueName, T message)
+        where T : IMessage
+    {
+        var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+
+        var policy = Policy
+            .Handle<Exception>()
+            .WaitAndRetry(_rabbitMQSettings.RetryCount,
+                attempt => TimeSpan.FromSeconds(_rabbitMQSettings.RetryDurationInSeconds), (exception, timeSpan, attempt, context) =>
+                {
+                    _logger.LogError(exception, "An exception occurred during message publishing: {ExceptionMessage}. Retrying attempt {RetryAttempt}...", exception.Message, attempt);
+                });
+
+        policy.Execute(() =>
+        {
+            _rabbitMQClient.Publish(exchange: _rabbitMQSettings.ExchangeName,
+                                    routingKey: queueName,
+                                    basicProperties: null,
+                                    body: body);
+
+            _logger.LogInformation("Sent '{MessageType}' to '{QueueName}' queue", typeof(T).Name, queueName);
+        });
+
+        return Task.CompletedTask;
+    }
+
     public void ReceiveMessage<T>(string queueName)
         where T : IMessage
     {
-        var channel = _rabbitMQClient.CreateChannel();
-
-        var consumer = new AsyncEventingBasicConsumer(channel);
+        var consumer = new AsyncEventingBasicConsumer(_rabbitMQClient.Channel);
         consumer.Received += async (model, eventArgs) =>
         {
             var body = eventArgs.Body.ToArray();
             var messageAsString = Encoding.UTF8.GetString(body);
-            _logger.LogInformation($"Received '{typeof(T).Name}' from '{queueName}' queue");
+            _logger.LogInformation("Received '{MessageType}' from '{QueueName}' queue", typeof(T).Name, queueName);
 
             var policy = Policy
                 .Handle<Exception>()
                 .WaitAndRetryAsync(_rabbitMQSettings.RetryCount, 
                    attempt => TimeSpan.FromSeconds(_rabbitMQSettings.RetryDurationInSeconds), (exception, timeSpan, attempt, context) =>
                    {
-                      _logger.LogError(exception, $"An exception occurred during message processing: {exception.Message}. Retrying attempt {attempt}...");
+                      _logger.LogError(exception, "An exception occurred during message processing: {ExceptionMessage}. Retrying attempt {RetryAttempt}...", exception.Message, attempt);
                    });
 
             await policy.ExecuteAsync(async () =>
@@ -60,35 +83,6 @@ public class ServiceBusHandler : IServiceBusHandler
             });
         };
 
-        channel.BasicConsume(queue: queueName,
-                             autoAck: true,
-                             consumer: consumer);
-    }
-    public Task SendMessage<T>(string queueName, T message)
-        where T : IMessage
-    {
-        var channel = _rabbitMQClient.CreateChannel();
-
-        var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
-
-        var policy = Policy
-            .Handle<Exception>()
-            .WaitAndRetry(_rabbitMQSettings.RetryCount, 
-                attempt => TimeSpan.FromSeconds(_rabbitMQSettings.RetryDurationInSeconds), (exception, timeSpan, attempt, context) =>
-                {
-                    _logger.LogError(exception, $"An exception occurred during message publishing: {exception.Message}. Retrying attempt {attempt}...");
-                });
-
-        policy.Execute(() =>
-        {
-            channel.BasicPublish(exchange: _rabbitMQSettings.ExchangeName,
-                                 routingKey: queueName,
-                                 basicProperties: null,
-                                 body: body);
-
-            _logger.LogInformation($"Sent '{typeof(T).Name}' to '{queueName}' queue");
-        });
-
-        return Task.CompletedTask;
+        _rabbitMQClient.Consume(queue: queueName, autoAck: true, consumer: consumer);
     }
 }

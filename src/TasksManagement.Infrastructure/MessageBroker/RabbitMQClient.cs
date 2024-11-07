@@ -8,28 +8,39 @@ namespace TasksManagement.Infrastructure.MessageBroker;
 public class RabbitMQClient : IRabbitMQClient, IDisposable
 {
     private readonly IConnectionFactory _connectionFactory;
-    private IModel _channel;
-    private IConnection _connection;
     private readonly RabbitMQSettings _rabbitMQSettings;
-
+    public IModel Channel { get; private set; }
+    private IConnection _connection;
+    
     public RabbitMQClient(IConnectionFactory connectionFactory, IOptions<RabbitMQSettings> rabbitMQSettings)
     {
         _connectionFactory = connectionFactory;
         _rabbitMQSettings = rabbitMQSettings.Value;
+        CreateChannel();
     }
 
-    public IModel CreateChannel()
+    public void Publish(string exchange, string routingKey, IBasicProperties? basicProperties, byte[] body)
+    {
+        Channel.BasicPublish(exchange, routingKey, basicProperties, body);
+    }
+
+    public void Consume(string queue, bool autoAck, IBasicConsumer consumer)
+    {
+        Channel.BasicConsume(queue, autoAck, consumer);
+    }
+
+    private void CreateChannel()
     {
         if (_connection == null || !_connection.IsOpen)
         {
             _connection = _connectionFactory.CreateConnection();
         }
 
-        if (_channel == null || !_channel.IsOpen)
+        if (Channel == null || !Channel.IsOpen)
         {
-            _channel = _connection.CreateModel();
+            Channel = _connection.CreateModel();
 
-            _channel.ExchangeDeclare(
+            Channel.ExchangeDeclare(
                 exchange: _rabbitMQSettings.ExchangeName,
                 type: _rabbitMQSettings.ExchangeType,
                 durable: true,
@@ -39,27 +50,25 @@ public class RabbitMQClient : IRabbitMQClient, IDisposable
 
             BindQueues();
         }
-
-        return _channel;
     }
 
     private void DeclareQueues()
     {
-        _channel.QueueDeclare(
+        Channel.QueueDeclare(
                 queue: _rabbitMQSettings.TaskCreateQueueName,
                 durable: true,
                 exclusive: false,
                 autoDelete: false,
                 null);
 
-        _channel.QueueDeclare(
+        Channel.QueueDeclare(
                 queue: _rabbitMQSettings.TaskUpdateQueueName,
                 durable: true,
                 exclusive: false,
                 autoDelete: false,
                 null);
 
-        _channel.QueueDeclare(
+        Channel.QueueDeclare(
                 queue: _rabbitMQSettings.ActionCompletedQueueName,
                 durable: true,
                 exclusive: false,
@@ -69,17 +78,17 @@ public class RabbitMQClient : IRabbitMQClient, IDisposable
 
     private void BindQueues()
     {
-        _channel.QueueBind(
+        Channel.QueueBind(
                 queue: _rabbitMQSettings.TaskCreateQueueName,
                 exchange: _rabbitMQSettings.ExchangeName,
                 routingKey: _rabbitMQSettings.TaskCreateQueueName);
 
-        _channel.QueueBind(
+        Channel.QueueBind(
                 queue: _rabbitMQSettings.TaskUpdateQueueName,
                 exchange: _rabbitMQSettings.ExchangeName,
                 routingKey: _rabbitMQSettings.TaskUpdateQueueName);
 
-        _channel.QueueBind(
+        Channel.QueueBind(
                 queue: _rabbitMQSettings.ActionCompletedQueueName,
                 exchange: _rabbitMQSettings.ExchangeName,
                 routingKey: _rabbitMQSettings.ActionCompletedQueueName);
@@ -88,8 +97,8 @@ public class RabbitMQClient : IRabbitMQClient, IDisposable
 
     public void Dispose()
     {
-        _channel?.Close();
-        _channel?.Dispose();
+        Channel?.Close();
+        Channel?.Dispose();
 
         _connection?.Close();
         _connection?.Dispose();
