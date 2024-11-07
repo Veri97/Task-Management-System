@@ -8,3 +8,14 @@ services:
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=MyTestPassword1234!
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest

@@ -2,6 +2,7 @@ using TasksManagement.Api.Extensions;
 using TasksManagement.Api.Middlewares;
 using TasksManagement.Infrastructure;
 using TasksManagement.Application;
+using TasksManagement.Api.HostedServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +14,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddInfrastructureServices(builder.Configuration);
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Configuration);
+
+builder.Services.AddHostedService<RabbitMQServiceBusHosted>();
 
 var app = builder.Build();
 

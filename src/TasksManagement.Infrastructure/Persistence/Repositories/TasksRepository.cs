@@ -13,23 +13,28 @@ public class TasksRepository : ITasksRepository
         _dbContext = dbContext;
     }
 
-    public async Task Create(TaskEntity task, CancellationToken cancellationToken)
+    public async Task Create(TaskEntity task, CancellationToken cancellationToken = default)
     {
         await _dbContext.Tasks.AddAsync(task, cancellationToken);
     }
 
-    public async Task<List<TaskEntity>> GetAllTasks(CancellationToken cancellationToken)
+    public async Task<List<TaskEntity>> GetAllTasks(CancellationToken cancellationToken = default)
     {
         return await _dbContext.Tasks.ToListAsync(cancellationToken);
     }
 
-    public async Task<TaskEntity?> GetTaskById(int id, CancellationToken cancellationToken)
+    public async Task<TaskEntity?> GetTaskById(int id, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Tasks.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
-    public async Task<bool> TaskByNameExists(string taskName, CancellationToken cancellationToken)
+    public async Task<bool> Exists(int id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Tasks.AnyAsync(x => x.Id == id, cancellationToken);
+    }
+
+    public async Task<bool> Exists(string taskName, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Tasks.AnyAsync(x => x.Name == taskName, cancellationToken);
-    }
+    }  
 }

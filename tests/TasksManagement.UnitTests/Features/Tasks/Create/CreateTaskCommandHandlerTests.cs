@@ -1,10 +1,12 @@
 ﻿using FluentAssertions;
 using MediatR;
+using Microsoft.Extensions.Options;
 using Moq;
+using TasksManagement.Application.Abstractions;
 using TasksManagement.Application.Exceptions;
 using TasksManagement.Application.Features.Tasks.Create;
+using TasksManagement.Application.Settings;
 using TasksManagement.Core.Contracts;
-using TasksManagement.Core.Entities;
 using TasksManagement.Core.Enums;
 
 namespace TasksManagement.UnitTests.Features.Tasks.Create;
@@ -12,14 +14,25 @@ namespace TasksManagement.UnitTests.Features.Tasks.Create;
 public class CreateTaskCommandHandlerTests
 {
     private readonly Mock<ITasksRepository> _tasksRepositoryMock;
-    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IServiceBusHandler> _serviceBusHandlerMock;
+    private readonly Mock<IOptions<RabbitMQSettings>> _rabbitMQSettingsMock;
     private readonly CreateTaskCommandHandler _handler;
 
     public CreateTaskCommandHandlerTests()
     {
         _tasksRepositoryMock = new Mock<ITasksRepository>();
-        _unitOfWorkMock = new Mock<IUnitOfWork>();
-        _handler = new CreateTaskCommandHandler(_tasksRepositoryMock.Object, _unitOfWorkMock.Object);
+        _serviceBusHandlerMock = new Mock<IServiceBusHandler>();
+
+        _rabbitMQSettingsMock = new Mock<IOptions<RabbitMQSettings>>();
+        _rabbitMQSettingsMock.SetupGet(x => x.Value).Returns(new RabbitMQSettings
+        {
+            TaskCreateQueueName = "task_create_test_queue"
+        });
+
+        _handler = new CreateTaskCommandHandler(
+            _tasksRepositoryMock.Object, 
+            _serviceBusHandlerMock.Object,
+            _rabbitMQSettingsMock.Object);
     }
 
     [Fact]
@@ -34,8 +47,7 @@ public class CreateTaskCommandHandlerTests
             AssignedTo = "user1@example.com"
         };
 
-        _tasksRepositoryMock.Setup(x =>
-              x.TaskByNameExists(command.Name, It.IsAny<CancellationToken>()))
+        _tasksRepositoryMock.Setup(x => x.Exists(command.Name, It.IsAny<CancellationToken>()))
            .ReturnsAsync(true);
 
         // Act
@@ -57,8 +69,7 @@ public class CreateTaskCommandHandlerTests
             AssignedTo = "user1@example.com"
         };
 
-        _tasksRepositoryMock.Setup(x =>
-             x.TaskByNameExists(command.Name, It.IsAny<CancellationToken>()))
+        _tasksRepositoryMock.Setup(x => x.Exists(command.Name, It.IsAny<CancellationToken>()))
            .ReturnsAsync(false);
 
         // Act
@@ -67,17 +78,14 @@ public class CreateTaskCommandHandlerTests
         // Assert
         result.Should().Be(Unit.Value);
 
-        _tasksRepositoryMock.Verify(
-                x => x.Create(
-                    It.Is<TaskEntity>(
+        _serviceBusHandlerMock.Verify(
+                x => x.SendMessage(
+                    _rabbitMQSettingsMock.Object.Value.TaskCreateQueueName,
+                    It.Is<CreateTaskMessage>(
                         t => t.Name == command.Name &&
                              t.Description == command.Description &&
                              t.Status == command.Status.Value &&
                              t.AssignedTo == command.AssignedTo
-                    ),
-                    It.IsAny<CancellationToken>()), Times.Once);
-
-        _unitOfWorkMock.Verify(
-                x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+                    )), Times.Once);
     }
 }

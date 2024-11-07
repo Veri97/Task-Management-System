@@ -1,11 +1,12 @@
 ﻿using FluentAssertions;
 using MediatR;
+using Microsoft.Extensions.Options;
 using Moq;
+using TasksManagement.Application.Abstractions;
 using TasksManagement.Application.Exceptions;
-using TasksManagement.Application.Features.Tasks;
 using TasksManagement.Application.Features.Tasks.Update;
+using TasksManagement.Application.Settings;
 using TasksManagement.Core.Contracts;
-using TasksManagement.Core.Entities;
 using TasksManagement.Core.Enums;
 
 namespace TasksManagement.UnitTests.Features.Tasks.Update;
@@ -13,14 +14,25 @@ namespace TasksManagement.UnitTests.Features.Tasks.Update;
 public class UpdateTaskCommandHandlerTests
 {
     private readonly Mock<ITasksRepository> _tasksRepositoryMock;
-    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IServiceBusHandler> _serviceBusHandlerMock;
+    private readonly Mock<IOptions<RabbitMQSettings>> _rabbitMQSettingsMock;
     private readonly UpdateTaskCommandHandler _handler;
 
     public UpdateTaskCommandHandlerTests()
     {
         _tasksRepositoryMock = new Mock<ITasksRepository>();
-        _unitOfWorkMock = new Mock<IUnitOfWork>();
-        _handler = new UpdateTaskCommandHandler(_tasksRepositoryMock.Object, _unitOfWorkMock.Object);
+        _serviceBusHandlerMock = new Mock<IServiceBusHandler>();
+
+        _rabbitMQSettingsMock = new Mock<IOptions<RabbitMQSettings>>();
+        _rabbitMQSettingsMock.SetupGet(x => x.Value).Returns(new RabbitMQSettings
+        {
+            TaskUpdateQueueName = "task_update_test_queue"
+        });
+
+        _handler = new UpdateTaskCommandHandler(
+            _tasksRepositoryMock.Object,
+            _serviceBusHandlerMock.Object,
+            _rabbitMQSettingsMock.Object);
     }
 
     [Fact]
@@ -33,9 +45,8 @@ public class UpdateTaskCommandHandlerTests
             NewStatus = Status.InProgress
         };
 
-        _tasksRepositoryMock.Setup(x =>
-              x.GetTaskById(command.Id, It.IsAny<CancellationToken>()))
-           .ReturnsAsync(() => null);
+        _tasksRepositoryMock.Setup(x => x.Exists(command.Id, It.IsAny<CancellationToken>()))
+           .ReturnsAsync(false);
 
         // Act
         Func<Task<Unit>> result = () => _handler.Handle(command, CancellationToken.None);
@@ -54,27 +65,20 @@ public class UpdateTaskCommandHandlerTests
             NewStatus = Status.Completed
         };
 
-        var mockedTask = new TaskEntity
-        {
-            Id = 1,
-            Name = "Task 1",
-            Status = Core.Enums.Status.InProgress,
-            Description = "Test description",
-            AssignedTo = "user1@example.com"
-        };
-
-        _tasksRepositoryMock.Setup(x =>
-             x.GetTaskById(command.Id, It.IsAny<CancellationToken>()))
-           .ReturnsAsync(mockedTask);
+        _tasksRepositoryMock.Setup(x => x.Exists(command.Id, It.IsAny<CancellationToken>()))
+           .ReturnsAsync(true);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.Should().Be(Unit.Value);
-        mockedTask.Status.Should().Be(command.NewStatus);
 
-        _unitOfWorkMock.Verify(
-                x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _serviceBusHandlerMock.Verify(
+                x => x.SendMessage(
+                    _rabbitMQSettingsMock.Object.Value.TaskUpdateQueueName,
+                    It.Is<UpdateTaskMessage>(
+                        t => t.Id == command.Id && t.NewStatus == command.NewStatus
+                    )), Times.Once);
     }
 }
