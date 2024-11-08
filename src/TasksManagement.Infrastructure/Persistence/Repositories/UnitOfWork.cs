@@ -2,7 +2,7 @@
 
 namespace TasksManagement.Infrastructure.Persistence.Repositories;
 
-public sealed class UnitOfWork : IUnitOfWork
+public class UnitOfWork : IUnitOfWork
 {
     private readonly TasksDbContext _context;
 

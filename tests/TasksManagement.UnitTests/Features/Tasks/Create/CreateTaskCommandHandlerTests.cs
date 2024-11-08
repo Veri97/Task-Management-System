@@ -58,7 +58,7 @@ public class CreateTaskCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldSuccessfullyCreateTask_WhenTaskIsUniqueByName()
+    public async Task Handle_ShouldSendMessageToCreateTask_WhenTaskIsUniqueByName()
     {
         // Arrange
         var command = new CreateTaskCommand

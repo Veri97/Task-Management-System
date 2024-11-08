@@ -56,7 +56,7 @@ public class UpdateTaskCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldSuccessfullyUpdateTaskStatus_WhenTaskExists()
+    public async Task Handle_ShouldSendMessageToUpdateTaskStatus_WhenTaskExists()
     {
         // Arrange
         var command = new UpdateTaskCommand
