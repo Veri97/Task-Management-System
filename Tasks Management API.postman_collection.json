@@ -1,0 +1,89 @@
+{
+	"info": {
+		"_postman_id": "baa003de-419e-4de5-ab5a-8c0bd860c623",
+		"name": "Tasks Management API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39609341"
+	},
+	"item": [
+		{
+			"name": "Create Task",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"Task 1\",\r\n  \"description\": \"This is a test description\",\r\n  \"status\": \"NotStarted\",\r\n  \"assignedTo\": \"user@example.com\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://localhost:7282/api/tasks",
+					"protocol": "https",
+					"host": [
+						"localhost"
+					],
+					"port": "7282",
+					"path": [
+						"api",
+						"tasks"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Task Status",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"newStatus\": \"InProgress\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://localhost:7282/api/tasks/1",
+					"protocol": "https",
+					"host": [
+						"localhost"
+					],
+					"port": "7282",
+					"path": [
+						"api",
+						"tasks",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Tasks",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://localhost:7282/api/tasks",
+					"protocol": "https",
+					"host": [
+						"localhost"
+					],
+					"port": "7282",
+					"path": [
+						"api",
+						"tasks"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
