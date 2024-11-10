@@ -20,8 +20,6 @@ public class ServiceBusHandlerTests
     private readonly Mock<ILogger<ServiceBusHandler>> _loggerMock;
     private readonly Mock<IOptions<RabbitMQSettings>> _rabbitMQSettingsMock;
     private readonly ServiceBusHandler _serviceBusHandler;
-    private readonly Mock<IModel> _channelMock;
-    private readonly Mock<IMessageConsumer<CreateTaskMessage>> _mockMessageConsumer;
 
     public ServiceBusHandlerTests()
     {
@@ -29,7 +27,6 @@ public class ServiceBusHandlerTests
         _serviceProviderMock = new Mock<IServiceProvider>();
         _loggerMock = new Mock<ILogger<ServiceBusHandler>>();
         _rabbitMQSettingsMock = new Mock<IOptions<RabbitMQSettings>>();
-        _channelMock = new Mock<IModel>();
         _rabbitMQSettingsMock.SetupGet(x => x.Value).Returns(new RabbitMQSettings
         {
             ExchangeName = "test_exchange",
@@ -37,10 +34,6 @@ public class ServiceBusHandlerTests
             RetryCount = 2,
             RetryDurationInSeconds = 0
         });
-
-        _mockMessageConsumer = new Mock<IMessageConsumer<CreateTaskMessage>>();
-        _serviceProviderMock.Setup(sp => sp.GetService(typeof(IMessageConsumer<CreateTaskMessage>)))
-                .Returns(_mockMessageConsumer.Object);
 
         _serviceBusHandler = new ServiceBusHandler(
             _serviceProviderMock.Object,
